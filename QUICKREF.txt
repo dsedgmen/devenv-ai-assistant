@@ -1,0 +1,139 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    VIM/NEOVIM AI CODING ASSISTANT                            ║
+║                    Quick Reference Card                                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌─ INSTALLATION ────────────────────────────────────────────────────────────────┐
+│                                                                               │
+│  Run setup script:  ~/.config/vim-ai-setup.sh                                │
+│                                                                               │
+│  Or manually:                                                                 │
+│    sudo dnf install -y ollama python3-ollama python3-openai                  │
+│    sudo systemctl enable --now ollama                                        │
+│    ollama pull granite-code:latest                                           │
+│    source ~/.bashrc                                                           │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ KEYBINDINGS (Leader = Space) ────────────────────────────────────────────────┐
+│                                                                               │
+│  NORMAL MODE:                                                                 │
+│    <Space>ac  →  Complete code from cursor                                   │
+│    <Space>ar  →  Review entire file                                          │
+│    <Space>ag  →  Generate code from description                              │
+│    <Space>aq  →  Ask AI a question                                           │
+│    <Space>ab  →  Switch backend (Ollama ↔ Claude)                            │
+│                                                                               │
+│  VISUAL MODE (select text first):                                            │
+│    <Space>ae  →  Explain selected code                                       │
+│    <Space>ar  →  Review selected code                                        │
+│    <Space>af  →  Refactor selected code                                      │
+│    <Space>aq  →  Ask about selected code                                     │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ VIM COMMANDS ────────────────────────────────────────────────────────────────┐
+│                                                                               │
+│  :AIComplete          Complete code                                          │
+│  :AIExplain           Explain selection                                      │
+│  :AIReview            Review code                                            │
+│  :AIRefactor          Refactor selection                                     │
+│  :AIGenerate          Generate new code                                      │
+│  :AIChat              Ask questions                                          │
+│  :AISwitchBackend     Toggle Ollama/Claude                                   │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ BACKENDS ────────────────────────────────────────────────────────────────────┐
+│                                                                               │
+│  OLLAMA (Local Granite)                                                       │
+│    export VIM_AI_BACKEND=ollama                                              │
+│    ✓ Offline  ✓ Free  ✓ Private  ✗ Slower  ✗ Less capable                   │
+│                                                                               │
+│  CLAUDE API                                                                   │
+│    export ANTHROPIC_API_KEY=sk-ant-...                                       │
+│    export VIM_AI_BACKEND=claude                                              │
+│    ✓ Best quality  ✓ Fast  ✗ Costs money  ✗ Needs internet                  │
+│                                                                               │
+│  Toggle in vim: <Space>ab                                                    │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ EXAMPLE WORKFLOWS ───────────────────────────────────────────────────────────┐
+│                                                                               │
+│  1. COMPLETE CODE:                                                            │
+│     def fibonacci(n):                                                         │
+│         # cursor here ← Press <Space>ac                                      │
+│                                                                               │
+│  2. EXPLAIN CODE:                                                             │
+│     Select confusing code → Press <Space>ae                                  │
+│                                                                               │
+│  3. REVIEW FOR BUGS:                                                          │
+│     Select function → Press <Space>ar                                        │
+│                                                                               │
+│  4. REFACTOR:                                                                 │
+│     Select code → <Space>af → Type "use list comprehension"                 │
+│                                                                               │
+│  5. GENERATE:                                                                 │
+│     <Space>ag → Type "function to validate email addresses"                 │
+│                                                                               │
+│  6. ASK QUESTIONS:                                                            │
+│     Select code → <Space>aq → Ask "Why is this inefficient?"                │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ TROUBLESHOOTING ─────────────────────────────────────────────────────────────┐
+│                                                                               │
+│  Ollama not working:                                                          │
+│    sudo systemctl status ollama                                              │
+│    sudo systemctl start ollama                                               │
+│                                                                               │
+│  Model missing:                                                               │
+│    ollama list                                                                │
+│    ollama pull granite-code:latest                                           │
+│                                                                               │
+│  Slow responses:                                                              │
+│    Ollama is CPU-only by default (slow). Use Claude for faster responses.   │
+│    Or: Check GPU: nvidia-smi                                                  │
+│                                                                               │
+│  Test manually:                                                               │
+│    vim-ai-helper chat "Hello world"                                          │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ COMMAND LINE USAGE ──────────────────────────────────────────────────────────┐
+│                                                                               │
+│  vim-ai-helper complete <file> <lang> [backend]                              │
+│  vim-ai-helper explain <file> <lang> [backend]                               │
+│  vim-ai-helper review <file> <lang> [backend]                                │
+│  vim-ai-helper refactor <file> <instruction> <lang> [backend]                │
+│  vim-ai-helper generate <description> <lang> [backend]                       │
+│  vim-ai-helper chat <question> [context_file] [backend]                      │
+│                                                                               │
+│  Example:                                                                     │
+│    vim-ai-helper explain script.py python ollama                             │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ FILES ───────────────────────────────────────────────────────────────────────┐
+│                                                                               │
+│  ~/.vimrc                        Vim configuration                           │
+│  ~/.config/nvim/init.lua         Neovim configuration                        │
+│  ~/.local/bin/vim-ai-helper      AI backend script                           │
+│  ~/.config/vim-ai-setup.sh       Installation script                         │
+│  ~/.config/vim-ai-README.md      Full documentation                          │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ QUICK TIPS ──────────────────────────────────────────────────────────────────┐
+│                                                                               │
+│  • Check status line for current backend (bottom right)                      │
+│  • Start with Ollama (free), switch to Claude for hard problems              │
+│  • Always select relevant code before asking questions                       │
+│  • Use specific prompts: "use async/await" not "improve this"                │
+│  • AI output appears in split window - review before applying                │
+│  • Ollama is private (local), Claude sends code to Anthropic                 │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+View full docs: cat ~/.config/vim-ai-README.md

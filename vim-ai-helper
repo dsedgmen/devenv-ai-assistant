@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+"""
+Unified AI helper for vim/neovim - supports both Ollama (Granite) and Claude API
+"""
+
+import sys
+import json
+import os
+from typing import Optional
+
+# Configuration
+OLLAMA_MODEL = os.getenv("VIM_AI_OLLAMA_MODEL", "granite-code:latest")
+CLAUDE_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+DEFAULT_BACKEND = os.getenv("VIM_AI_BACKEND", "ollama")  # ollama or claude
+
+def get_ollama_response(prompt: str, system: str = "", stream: bool = False) -> str:
+    """Get response from Ollama"""
+    try:
+        import ollama
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+
+        response = ollama.chat(
+            model=OLLAMA_MODEL,
+            messages=messages,
+            stream=stream
+        )
+
+        if stream:
+            full_response = ""
+            for chunk in response:
+                content = chunk['message']['content']
+                print(content, end='', flush=True)
+                full_response += content
+            print()  # newline at end
+            return full_response
+        else:
+            return response['message']['content']
+    except ImportError:
+        return "Error: python3-ollama not installed. Run: sudo dnf install python3-ollama"
+    except Exception as e:
+        return f"Error calling Ollama: {str(e)}"
+
+def get_claude_response(prompt: str, system: str = "", stream: bool = False) -> str:
+    """Get response from Claude API"""
+    if not CLAUDE_API_KEY:
+        return "Error: ANTHROPIC_API_KEY environment variable not set"
+
+    try:
+        from openai import OpenAI
+        client = OpenAI(
+            api_key=CLAUDE_API_KEY,
+            base_url="https://api.anthropic.com/v1"
+        )
+
+        messages = [{"role": "user", "content": prompt}]
+
+        response = client.chat.completions.create(
+            model="claude-sonnet-4-5@20250929",
+            messages=messages,
+            stream=stream,
+            extra_headers={
+                "anthropic-version": "2025-02-01"
+            }
+        )
+
+        if stream:
+            full_response = ""
+            for chunk in response:
+                if chunk.choices[0].delta.content:
+                    content = chunk.choices[0].delta.content
+                    print(content, end='', flush=True)
+                    full_response += content
+            print()
+            return full_response
+        else:
+            return response.choices[0].message.content
+    except ImportError:
+        return "Error: python3-openai not installed. Run: sudo dnf install python3-openai"
+    except Exception as e:
+        return f"Error calling Claude: {str(e)}"
+
+def get_ai_response(prompt: str, system: str = "", backend: Optional[str] = None, stream: bool = False) -> str:
+    """Route to appropriate AI backend"""
+    backend = backend or DEFAULT_BACKEND
+
+    if backend == "claude":
+        return get_claude_response(prompt, system, stream)
+    else:
+        return get_ollama_response(prompt, system, stream)
+
+def complete_code(code: str, language: str = "", backend: Optional[str] = None) -> str:
+    """Complete or suggest next lines of code"""
+    system = "You are an expert code completion assistant. Complete the code naturally. Only output the completion, no explanations."
+    prompt = f"Complete this {language} code:\n\n{code}\n\nProvide only the next logical lines of code:"
+    return get_ai_response(prompt, system, backend)
+
+def explain_code(code: str, language: str = "", backend: Optional[str] = None) -> str:
+    """Explain selected code"""
+    system = "You are an expert programmer. Explain code clearly and concisely."
+    prompt = f"Explain this {language} code:\n\n{code}"
+    return get_ai_response(prompt, system, backend)
+
+def review_code(code: str, language: str = "", backend: Optional[str] = None) -> str:
+    """Review code for issues, improvements"""
+    system = "You are an expert code reviewer. Find bugs, security issues, and suggest improvements."
+    prompt = f"Review this {language} code for bugs, security issues, and improvements:\n\n{code}"
+    return get_ai_response(prompt, system, backend)
+
+def refactor_code(code: str, instruction: str = "", language: str = "", backend: Optional[str] = None) -> str:
+    """Refactor code based on instruction"""
+    system = "You are an expert programmer. Refactor code as requested. Output only the refactored code."
+    base_prompt = f"Refactor this {language} code"
+    if instruction:
+        base_prompt += f" to {instruction}"
+    prompt = f"{base_prompt}:\n\n{code}\n\nRefactored code:"
+    return get_ai_response(prompt, system, backend)
+
+def generate_code(description: str, language: str = "", backend: Optional[str] = None) -> str:
+    """Generate code from description"""
+    system = "You are an expert programmer. Generate clean, working code based on descriptions."
+    prompt = f"Generate {language} code for: {description}\n\nCode:"
+    return get_ai_response(prompt, system, backend)
+
+def chat(question: str, context: str = "", backend: Optional[str] = None) -> str:
+    """Chat/Q&A about code"""
+    system = "You are an expert programming assistant. Answer questions clearly and provide code examples when helpful."
+    prompt = question
+    if context:
+        prompt = f"Context:\n{context}\n\nQuestion: {question}"
+    return get_ai_response(prompt, system, backend, stream=True)
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: vim-ai-helper <command> [options]", file=sys.stderr)
+        print("\nCommands:", file=sys.stderr)
+        print("  complete <file> <language> [backend]  - Complete code from file", file=sys.stderr)
+        print("  explain <file> <language> [backend]   - Explain code from file", file=sys.stderr)
+        print("  review <file> <language> [backend]    - Review code from file", file=sys.stderr)
+        print("  refactor <file> <instruction> <lang> [backend] - Refactor code", file=sys.stderr)
+        print("  generate <description> <language> [backend] - Generate code", file=sys.stderr)
+        print("  chat <question> [context_file] [backend] - Ask questions", file=sys.stderr)
+        print("\nBackends: ollama (default), claude", file=sys.stderr)
+        print("\nEnvironment variables:", file=sys.stderr)
+        print("  VIM_AI_BACKEND=ollama|claude", file=sys.stderr)
+        print("  VIM_AI_OLLAMA_MODEL=granite-code:latest", file=sys.stderr)
+        print("  ANTHROPIC_API_KEY=your-key", file=sys.stderr)
+        sys.exit(1)
+
+    command = sys.argv[1]
+
+    try:
+        if command == "complete":
+            code_file = sys.argv[2]
+            language = sys.argv[3] if len(sys.argv) > 3 else ""
+            backend = sys.argv[4] if len(sys.argv) > 4 else None
+            with open(code_file, 'r') as f:
+                code = f.read()
+            print(complete_code(code, language, backend))
+
+        elif command == "explain":
+            code_file = sys.argv[2]
+            language = sys.argv[3] if len(sys.argv) > 3 else ""
+            backend = sys.argv[4] if len(sys.argv) > 4 else None
+            with open(code_file, 'r') as f:
+                code = f.read()
+            print(explain_code(code, language, backend))
+
+        elif command == "review":
+            code_file = sys.argv[2]
+            language = sys.argv[3] if len(sys.argv) > 3 else ""
+            backend = sys.argv[4] if len(sys.argv) > 4 else None
+            with open(code_file, 'r') as f:
+                code = f.read()
+            print(review_code(code, language, backend))
+
+        elif command == "refactor":
+            code_file = sys.argv[2]
+            instruction = sys.argv[3] if len(sys.argv) > 3 else ""
+            language = sys.argv[4] if len(sys.argv) > 4 else ""
+            backend = sys.argv[5] if len(sys.argv) > 5 else None
+            with open(code_file, 'r') as f:
+                code = f.read()
+            print(refactor_code(code, instruction, language, backend))
+
+        elif command == "generate":
+            description = sys.argv[2]
+            language = sys.argv[3] if len(sys.argv) > 3 else ""
+            backend = sys.argv[4] if len(sys.argv) > 4 else None
+            print(generate_code(description, language, backend))
+
+        elif command == "chat":
+            question = sys.argv[2]
+            context = ""
+            backend = None
+            if len(sys.argv) > 3:
+                if sys.argv[3] in ["ollama", "claude"]:
+                    backend = sys.argv[3]
+                else:
+                    with open(sys.argv[3], 'r') as f:
+                        context = f.read()
+                    if len(sys.argv) > 4:
+                        backend = sys.argv[4]
+            print(chat(question, context, backend))
+
+        else:
+            print(f"Unknown command: {command}", file=sys.stderr)
+            sys.exit(1)
+
+    except FileNotFoundError as e:
+        print(f"File not found: {e.filename}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {str(e)}", file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
