@@ -20,7 +20,7 @@ Works with standard vim and neovim. All dependencies installable from Fedora sys
 ### 1. Clone this repo
 
 ```bash
-git clone https://github.com/yourusername/vim-ai-assistant.git
+git clone https://github.com/dsedgmen/vim-ai-assistant.git
 cd vim-ai-assistant
 ```
 
