@@ -14,7 +14,8 @@ local ai_helper = vim.fn.expand("~/.local/bin/vim-ai-helper")
 -- Monitoring/Logging state
 local log_buffer = nil
 local log_window = nil
-local log_enabled = false
+-- Check environment variable for auto-enable, default to true for convenience
+local log_enabled = vim.env.VIM_AI_LOGGING ~= "0"  -- Set VIM_AI_LOGGING=0 to disable by default
 local log_file = vim.fn.expand("~/.cache/vim-ai-activity.log")
 
 -- Ensure log directory exists
@@ -53,8 +54,10 @@ local function toggle_monitor()
         -- Close the monitor
         vim.api.nvim_win_close(log_window, true)
         log_window = nil
+        log_activity("Monitor panel closed")
         print("AI Monitor closed")
     else
+        log_activity("Monitor panel opened")
         -- Open the monitor
         -- Create buffer if it doesn't exist
         if not log_buffer or not vim.api.nvim_buf_is_valid(log_buffer) then
@@ -74,10 +77,16 @@ local function toggle_monitor()
                 f:close()
                 vim.api.nvim_buf_set_lines(log_buffer, 0, -1, false, lines)
             else
+                local status = log_enabled and "ENABLED" or "DISABLED (press <Space>al to enable)"
                 vim.api.nvim_buf_set_lines(log_buffer, 0, -1, false, {
                     "=== AI Activity Monitor ===",
                     "Tracking all AI assistant operations",
-                    "Commands: :AIMonitorClear to clear, :AIMonitor to toggle",
+                    "Logging status: " .. status,
+                    "",
+                    "Commands:",
+                    "  :AILogging (<Space>al)    - Toggle logging on/off",
+                    "  :AIMonitorClear           - Clear this log",
+                    "  :AIMonitor (<Space>am)    - Toggle this panel",
                     ""
                 })
             end
@@ -97,7 +106,8 @@ local function toggle_monitor()
         -- Syntax highlighting
         vim.api.nvim_buf_set_option(log_buffer, 'filetype', 'log')
 
-        print("AI Monitor opened")
+        local status = log_enabled and "Logging: ON" or "Logging: OFF (press <Space>al to enable)"
+        print("AI Monitor opened | " .. status)
     end
 end
 
@@ -341,3 +351,9 @@ print("Commands: <Space>ac (complete inline), <Space>as (complete split)")
 print("          <Space>ar (review), <Space>ag (generate), <Space>aq (chat)")
 print("Visual: <Space>ae (explain), <Space>af (refactor), <Space>aq (chat)")
 print("Switch backend: <Space>ab | Monitor: <Space>am | Logging: <Space>al")
+if log_enabled then
+    print("Activity logging: ENABLED (log file: " .. log_file .. ")")
+    log_activity("AI Assistant initialized")
+else
+    print("Activity logging: DISABLED (enable with <Space>al)")
+end
