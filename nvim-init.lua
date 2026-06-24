@@ -154,13 +154,13 @@ local function ai_chat()
     local mode = vim.fn.mode()
     if mode == 'v' or mode == 'V' then
         vim.cmd("'<,'>write! " .. tmpfile)
-        local cmd = string.format("%s chat '%s' %s %s",
-            ai_helper, question, tmpfile, backend)
+        local cmd = string.format("chat '%s' %s %s",
+            question, tmpfile, backend)
         run_ai_command(cmd)
         vim.fn.delete(tmpfile)
     else
-        local cmd = string.format("%s chat '%s' %s",
-            ai_helper, question, backend)
+        local cmd = string.format("chat '%s' %s",
+            question, backend)
         run_ai_command(cmd)
     end
 end
