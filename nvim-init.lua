@@ -192,14 +192,21 @@ local function run_ai_command(args)
     log_activity("Completed in " .. duration .. "s, output lines: " .. #output)
 end
 
--- AI Complete - complete code and insert at cursor
+-- AI Complete - show preview with accept/reject options
+local completion_preview = {
+    buffer = nil,
+    window = nil,
+    lines = nil,
+    insert_row = nil
+}
+
 local function ai_complete()
     local tmpfile = vim.fn.tempname()
     vim.cmd("write! " .. tmpfile)
     local lang = get_language()
     local backend = get_backend()
 
-    log_activity("AI Complete (inline): lang=" .. lang .. ", backend=" .. backend)
+    log_activity("AI Complete (preview): lang=" .. lang .. ", backend=" .. backend)
 
     local cmd = ai_helper .. " complete " .. tmpfile .. " " .. lang .. " " .. backend
     local start_time = os.time()
@@ -207,12 +214,92 @@ local function ai_complete()
     local duration = os.time() - start_time
     vim.fn.delete(tmpfile)
 
-    -- Insert completion at cursor position
-    local row, col = unpack(vim.api.nvim_win_get_cursor(0))
-    vim.api.nvim_buf_set_lines(0, row, row, false, output)
+    log_activity("Completed in " .. duration .. "s, generated " .. #output .. " lines")
 
-    log_activity("Completed in " .. duration .. "s, inserted " .. #output .. " lines")
-    print("AI completion inserted (" .. backend .. ")")
+    -- Store completion data
+    completion_preview.lines = output
+    local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+    completion_preview.insert_row = row
+
+    -- Create preview buffer if needed
+    if not completion_preview.buffer or not vim.api.nvim_buf_is_valid(completion_preview.buffer) then
+        completion_preview.buffer = vim.api.nvim_create_buf(false, true)
+        vim.api.nvim_buf_set_option(completion_preview.buffer, 'buftype', 'nofile')
+        vim.api.nvim_buf_set_option(completion_preview.buffer, 'bufhidden', 'wipe')
+        vim.api.nvim_buf_set_option(completion_preview.buffer, 'swapfile', false)
+    end
+
+    -- Set preview content with header
+    local preview_lines = {
+        "=== AI Completion Preview ===",
+        "Backend: " .. backend .. " | Duration: " .. duration .. "s | Lines: " .. #output,
+        "",
+        "Press 'a' to ACCEPT and insert | Press 'r' to REJECT and close",
+        "",
+        "--- Completion starts below ---",
+    }
+    for _, line in ipairs(output) do
+        table.insert(preview_lines, line)
+    end
+
+    vim.api.nvim_buf_set_lines(completion_preview.buffer, 0, -1, false, preview_lines)
+    vim.api.nvim_buf_set_option(completion_preview.buffer, 'filetype', lang)
+    vim.api.nvim_buf_set_option(completion_preview.buffer, 'modifiable', false)
+
+    -- Open in split
+    vim.cmd("botright split")
+    completion_preview.window = vim.api.nvim_get_current_win()
+    vim.api.nvim_win_set_buf(completion_preview.window, completion_preview.buffer)
+    vim.api.nvim_win_set_height(completion_preview.window, math.min(15, #preview_lines))
+
+    -- Set up keybindings for accept/reject
+    vim.api.nvim_buf_set_keymap(completion_preview.buffer, 'n', 'a', ':lua accept_completion()<CR>',
+        { noremap = true, silent = true })
+    vim.api.nvim_buf_set_keymap(completion_preview.buffer, 'n', 'r', ':lua reject_completion()<CR>',
+        { noremap = true, silent = true })
+    vim.api.nvim_buf_set_keymap(completion_preview.buffer, 'n', 'q', ':lua reject_completion()<CR>',
+        { noremap = true, silent = true })
+
+    print("Preview ready | Press 'a' to accept, 'r' to reject")
+end
+
+-- Accept completion and insert into original buffer
+function accept_completion()
+    if not completion_preview.lines then
+        print("No completion to accept")
+        return
+    end
+
+    -- Close preview window
+    if completion_preview.window and vim.api.nvim_win_is_valid(completion_preview.window) then
+        vim.api.nvim_win_close(completion_preview.window, true)
+    end
+
+    -- Switch back to original window and insert
+    vim.cmd("wincmd p")
+    vim.api.nvim_buf_set_lines(0, completion_preview.insert_row, completion_preview.insert_row,
+        false, completion_preview.lines)
+
+    log_activity("Completion accepted, inserted " .. #completion_preview.lines .. " lines")
+    print("Completion inserted (" .. #completion_preview.lines .. " lines)")
+
+    -- Clear preview
+    completion_preview.lines = nil
+    completion_preview.insert_row = nil
+end
+
+-- Reject completion and close preview
+function reject_completion()
+    if completion_preview.window and vim.api.nvim_win_is_valid(completion_preview.window) then
+        vim.api.nvim_win_close(completion_preview.window, true)
+    end
+
+    log_activity("Completion rejected")
+    print("Completion rejected")
+
+    -- Clear preview
+    completion_preview.lines = nil
+    completion_preview.insert_row = nil
 end
 
 -- AI Complete in split (for review before inserting)
@@ -284,38 +371,184 @@ local function ai_generate()
     run_ai_command(cmd)
 end
 
--- AI Chat - ask questions about code
+-- AI Chat - interactive chat with conversation history
+local chat_state = {
+    buffer = nil,
+    window = nil,
+    history = {},
+    context_file = nil
+}
+
 local function ai_chat()
-    local question = vim.fn.input("Ask AI: ")
-    if question == "" then return end
-
-    local tmpfile = vim.fn.tempname()
-    local backend = get_backend()
-
-    -- Check if visual mode for context
+    -- Get initial context if in visual mode
+    local context = nil
     local mode = vim.fn.mode()
     if mode == 'v' or mode == 'V' then
+        local tmpfile = vim.fn.tempname()
         vim.cmd("'<,'>write! " .. tmpfile)
-        local cmd = string.format("chat '%s' %s %s",
-            question, tmpfile, backend)
-        run_ai_command(cmd)
-        vim.fn.delete(tmpfile)
-    else
-        local cmd = string.format("chat '%s' %s",
-            question, backend)
-        run_ai_command(cmd)
+        chat_state.context_file = tmpfile
+
+        -- Read context for display
+        local f = io.open(tmpfile, "r")
+        if f then
+            context = f:read("*all")
+            f:close()
+        end
     end
+
+    -- Create or reuse chat buffer
+    if not chat_state.buffer or not vim.api.nvim_buf_is_valid(chat_state.buffer) then
+        chat_state.buffer = vim.api.nvim_create_buf(false, true)
+        vim.api.nvim_buf_set_option(chat_state.buffer, 'buftype', 'nofile')
+        vim.api.nvim_buf_set_option(chat_state.buffer, 'bufhidden', 'hide')
+        vim.api.nvim_buf_set_option(chat_state.buffer, 'swapfile', false)
+        vim.api.nvim_buf_set_name(chat_state.buffer, 'AI Chat')
+        chat_state.history = {}
+
+        -- Set initial content
+        local welcome = {
+            "=== AI Chat Session ===",
+            "Backend: " .. get_backend(),
+            "",
+            "Commands:",
+            "  i - Ask a question",
+            "  c - Clear chat history",
+            "  q - Close chat",
+            "  <Space>ab - Switch backend",
+            "",
+        }
+
+        if context then
+            table.insert(welcome, "Context:")
+            for line in context:gmatch("[^\n]+") do
+                table.insert(welcome, "  " .. line)
+            end
+            table.insert(welcome, "")
+        end
+
+        table.insert(welcome, "Press 'i' to start chatting...")
+        table.insert(welcome, "")
+
+        vim.api.nvim_buf_set_lines(chat_state.buffer, 0, -1, false, welcome)
+    end
+
+    -- Open chat window
+    if not chat_state.window or not vim.api.nvim_win_is_valid(chat_state.window) then
+        vim.cmd("botright split")
+        chat_state.window = vim.api.nvim_get_current_win()
+        vim.api.nvim_win_set_buf(chat_state.window, chat_state.buffer)
+        vim.api.nvim_win_set_height(chat_state.window, 20)
+    end
+
+    -- Set up keybindings
+    vim.api.nvim_buf_set_keymap(chat_state.buffer, 'n', 'i', ':lua chat_ask_question()<CR>',
+        { noremap = true, silent = true })
+    vim.api.nvim_buf_set_keymap(chat_state.buffer, 'n', 'c', ':lua chat_clear()<CR>',
+        { noremap = true, silent = true })
+    vim.api.nvim_buf_set_keymap(chat_state.buffer, 'n', 'q', ':lua chat_close()<CR>',
+        { noremap = true, silent = true })
+
+    log_activity("Chat session opened")
+    print("Chat session ready | Press 'i' to ask, 'c' to clear, 'q' to quit")
+end
+
+-- Ask a question in chat
+function chat_ask_question()
+    local question = vim.fn.input("Your question: ")
+    if question == "" then return end
+
+    local backend = get_backend()
+    log_activity("Chat question: " .. question)
+
+    -- Add question to history
+    table.insert(chat_state.history, {role = "user", content = question})
+
+    -- Display question in chat buffer
+    local lines = vim.api.nvim_buf_get_lines(chat_state.buffer, 0, -1, false)
+    table.insert(lines, "")
+    table.insert(lines, "[You] " .. question)
+    vim.api.nvim_buf_set_lines(chat_state.buffer, 0, -1, false, lines)
+
+    -- Build command with context if available
+    local cmd
+    if chat_state.context_file then
+        cmd = ai_helper .. " chat '" .. question .. "' " .. chat_state.context_file .. " " .. backend
+    else
+        cmd = ai_helper .. " chat '" .. question .. "' " .. backend
+    end
+
+    -- Get AI response
+    table.insert(lines, "[AI] Thinking...")
+    vim.api.nvim_buf_set_lines(chat_state.buffer, 0, -1, false, lines)
+
+    local output = vim.fn.systemlist(cmd)
+
+    -- Remove "thinking" message
+    table.remove(lines)
+
+    -- Add AI response
+    table.insert(lines, "[AI]")
+    for _, line in ipairs(output) do
+        table.insert(lines, "  " .. line)
+    end
+    vim.api.nvim_buf_set_lines(chat_state.buffer, 0, -1, false, lines)
+
+    -- Scroll to bottom
+    local line_count = vim.api.nvim_buf_line_count(chat_state.buffer)
+    if chat_state.window and vim.api.nvim_win_is_valid(chat_state.window) then
+        vim.api.nvim_win_set_cursor(chat_state.window, {line_count, 0})
+    end
+
+    -- Add to history
+    table.insert(chat_state.history, {role = "assistant", content = table.concat(output, "\n")})
+
+    log_activity("Chat response received (" .. #output .. " lines)")
+    print("Response ready | Press 'i' for follow-up question")
+end
+
+-- Clear chat history
+function chat_clear()
+    chat_state.history = {}
+    local welcome = {
+        "=== AI Chat Session ===",
+        "Backend: " .. get_backend(),
+        "",
+        "Chat history cleared.",
+        "",
+        "Press 'i' to start chatting...",
+        ""
+    }
+    vim.api.nvim_buf_set_lines(chat_state.buffer, 0, -1, false, welcome)
+    log_activity("Chat history cleared")
+    print("Chat history cleared")
+end
+
+-- Close chat window
+function chat_close()
+    if chat_state.window and vim.api.nvim_win_is_valid(chat_state.window) then
+        vim.api.nvim_win_close(chat_state.window, true)
+        chat_state.window = nil
+    end
+
+    -- Clean up context file
+    if chat_state.context_file then
+        vim.fn.delete(chat_state.context_file)
+        chat_state.context_file = nil
+    end
+
+    log_activity("Chat session closed")
+    print("Chat session closed")
 end
 
 -- Key mappings (Leader key is space by default)
 vim.g.mapleader = " "
 
 -- AI commands in normal mode
-vim.keymap.set('n', '<Leader>ac', ai_complete, { desc = 'AI Complete code (inline)' })
+vim.keymap.set('n', '<Leader>ac', ai_complete, { desc = 'AI Complete code (preview/accept)' })
 vim.keymap.set('n', '<Leader>as', ai_complete_split, { desc = 'AI Complete code (in split)' })
 vim.keymap.set('n', '<Leader>ar', ai_review, { desc = 'AI Review code' })
 vim.keymap.set('n', '<Leader>ag', ai_generate, { desc = 'AI Generate code' })
-vim.keymap.set('n', '<Leader>aq', ai_chat, { desc = 'AI Chat/Question' })
+vim.keymap.set('n', '<Leader>aq', ai_chat, { desc = 'AI Interactive Chat' })
 vim.keymap.set('n', '<Leader>ab', switch_backend, { desc = 'AI Switch backend (Ollama/Claude)' })
 
 -- AI monitoring commands
@@ -347,8 +580,8 @@ vim.api.nvim_create_user_command('AILogging', toggle_logging, {})
 vim.opt.statusline = "%f %h%m%r%=%{luaeval('vim.env.VIM_AI_BACKEND or \"ollama\"')} | %l,%c %P"
 
 print("AI Coding Assistant loaded! Leader = Space")
-print("Commands: <Space>ac (complete inline), <Space>as (complete split)")
-print("          <Space>ar (review), <Space>ag (generate), <Space>aq (chat)")
+print("Commands: <Space>ac (complete w/preview), <Space>as (complete split)")
+print("          <Space>ar (review), <Space>ag (generate), <Space>aq (interactive chat)")
 print("Visual: <Space>ae (explain), <Space>af (refactor), <Space>aq (chat)")
 print("Switch backend: <Space>ab | Monitor: <Space>am | Logging: <Space>al")
 if log_enabled then
