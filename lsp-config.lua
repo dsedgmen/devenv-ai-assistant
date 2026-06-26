@@ -39,10 +39,17 @@ end
 vim.api.nvim_create_autocmd("FileType", {
     pattern = "python",
     callback = function()
+        -- Find root directory or use current file's directory
+        local root_files = {'.git', 'setup.py', 'pyproject.toml', 'requirements.txt'}
+        local root_dir = vim.fs.dirname(vim.fs.find(root_files, { upward = true })[1])
+        if not root_dir then
+            root_dir = vim.fn.getcwd()
+        end
+
         vim.lsp.start({
             name = "pylsp",
             cmd = { "pylsp" },
-            root_dir = vim.fs.dirname(vim.fs.find({'.git', 'setup.py', 'pyproject.toml'}, { upward = true })[1]),
+            root_dir = root_dir,
             on_attach = on_attach,
             settings = {
                 pylsp = {
@@ -63,10 +70,15 @@ vim.api.nvim_create_autocmd("FileType", {
 vim.api.nvim_create_autocmd("FileType", {
     pattern = "go",
     callback = function()
+        local root_dir = vim.fs.dirname(vim.fs.find({'go.mod', '.git'}, { upward = true })[1])
+        if not root_dir then
+            root_dir = vim.fn.getcwd()
+        end
+
         vim.lsp.start({
             name = "gopls",
             cmd = { "gopls" },
-            root_dir = vim.fs.dirname(vim.fs.find({'go.mod', '.git'}, { upward = true })[1]),
+            root_dir = root_dir,
             on_attach = on_attach,
         })
     end,
@@ -76,10 +88,15 @@ vim.api.nvim_create_autocmd("FileType", {
 vim.api.nvim_create_autocmd("FileType", {
     pattern = {"sh", "bash"},
     callback = function()
+        local root_dir = vim.fs.dirname(vim.fs.find({'.git'}, { upward = true })[1])
+        if not root_dir then
+            root_dir = vim.fn.getcwd()
+        end
+
         vim.lsp.start({
             name = "bashls",
             cmd = { "bash-language-server", "start" },
-            root_dir = vim.fs.dirname(vim.fs.find({'.git'}, { upward = true })[1]),
+            root_dir = root_dir,
             on_attach = on_attach,
         })
     end,

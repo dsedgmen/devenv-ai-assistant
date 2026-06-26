@@ -622,12 +622,12 @@ vim.opt.statusline = "%f %h%m%r%=%{luaeval('vim.env.VIM_AI_BACKEND or \"ollama\"
 -- Load LSP and Tree-sitter configurations (if installed)
 local lsp_ok, lsp_err = pcall(require, 'lsp-config')
 if not lsp_ok then
-    print("LSP not configured (run install script to set up)")
+    print("LSP config error: " .. tostring(lsp_err))
 end
 
 local ts_ok, ts_err = pcall(require, 'treesitter-config')
 if not ts_ok then
-    print("Tree-sitter not configured (run install script to set up)")
+    print("Tree-sitter config error: " .. tostring(ts_err))
 end
 
 print("AI Coding Assistant loaded! Leader = Space")
