@@ -1,5 +1,5 @@
 " Vim AI Coding Assistant Configuration
-" Supports both Ollama (Granite) and Claude API
+" Supports Ollama (Granite), Claude API, and Gemini API
 
 " Basic settings
 set number
@@ -10,6 +10,55 @@ set tabstop=4
 syntax on
 filetype plugin indent on
 
+" ═══════════════════════════════════════════════════════════
+" ALE (LSP) Configuration
+" ═══════════════════════════════════════════════════════════
+" ALE provides LSP support for vim (like neovim's built-in LSP)
+
+" Enable ALE if installed
+let g:ale_enabled = 1
+
+" LSP servers to use (same as neovim)
+let g:ale_linters = {
+\   'python': ['pylsp', 'ruff'],
+\   'go': ['gopls'],
+\   'sh': ['bashls'],
+\   'bash': ['bashls'],
+\   'javascript': [],
+\   'typescript': [],
+\}
+
+" Enable completion
+let g:ale_completion_enabled = 1
+set omnifunc=ale#completion#OmniFunc
+
+" Show errors in location list
+let g:ale_set_loclist = 1
+let g:ale_set_quickfix = 0
+let g:ale_open_list = 0
+
+" Lint as you type
+let g:ale_lint_on_text_changed = 'normal'
+let g:ale_lint_on_insert_leave = 1
+
+" Signs in gutter
+let g:ale_sign_error = '✗'
+let g:ale_sign_warning = '!'
+
+" LSP Keybindings (similar to neovim)
+nmap gd <Plug>(ale_go_to_definition)
+nmap gr <Plug>(ale_find_references)
+nmap K <Plug>(ale_hover)
+nmap <leader>rn <Plug>(ale_rename)
+nmap <leader>ca <Plug>(ale_code_action)
+nmap [d <Plug>(ale_previous_wrap)
+nmap ]d <Plug>(ale_next_wrap)
+nmap <leader>e <Plug>(ale_detail)
+
+" Completion with Ctrl+Space
+inoremap <C-Space> <C-x><C-o>
+
+" ═══════════════════════════════════════════════════════════
 " AI Helper script path
 let s:ai_helper = expand("~/.local/bin/vim-ai-helper")
 
