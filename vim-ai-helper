@@ -93,8 +93,8 @@ def get_ai_response(prompt: str, system: str = "", backend: Optional[str] = None
 
 def complete_code(code: str, language: str = "", backend: Optional[str] = None) -> str:
     """Complete or suggest next lines of code"""
-    system = "You are an expert code completion assistant. Complete the code naturally. Only output the completion, no explanations."
-    prompt = f"Complete this {language} code:\n\n{code}\n\nProvide only the next logical lines of code:"
+    system = "You are a code completion tool. Output ONLY valid code that continues from where the input left off. NO explanations, NO comments, NO markdown, NO text - just raw code."
+    prompt = f"Complete this {language} code. Output ONLY the continuation code, nothing else:\n\n{code}\n\n"
     return get_ai_response(prompt, system, backend)
 
 def explain_code(code: str, language: str = "", backend: Optional[str] = None) -> str:

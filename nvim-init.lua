@@ -312,6 +312,44 @@ local function ai_complete_split()
     vim.fn.delete(tmpfile)
 end
 
+-- AI Fix - fix/replace selected code
+local function ai_fix()
+    -- Must be in visual mode
+    local mode = vim.fn.mode()
+    if mode ~= 'v' and mode ~= 'V' then
+        print("AI Fix requires visual selection - select code to fix")
+        return
+    end
+
+    local tmpfile = vim.fn.tempname()
+    vim.cmd("'<,'>write! " .. tmpfile)
+    local lang = get_language()
+    local backend = get_backend()
+
+    log_activity("AI Fix: lang=" .. lang .. ", backend=" .. backend)
+
+    -- Read the buggy code
+    local f = io.open(tmpfile, "r")
+    local buggy_code = f:read("*all")
+    f:close()
+
+    -- Get AI to fix it (using refactor command with "fix bugs and errors" instruction)
+    local cmd = ai_helper .. " refactor " .. tmpfile .. " 'fix all bugs and errors' " .. lang .. " " .. backend
+    local start_time = os.time()
+    local output = vim.fn.systemlist(cmd)
+    local duration = os.time() - start_time
+    vim.fn.delete(tmpfile)
+
+    log_activity("Fix completed in " .. duration .. "s, generated " .. #output .. " lines")
+
+    -- Replace selected lines with fixed code
+    vim.cmd("'<,'>delete")
+    local row = vim.fn.line("'<") - 1
+    vim.api.nvim_buf_set_lines(0, row, row, false, output)
+
+    print("Code fixed and replaced (" .. #output .. " lines)")
+end
+
 -- AI Explain - explain selected code
 local function ai_explain()
     local tmpfile = vim.fn.tempname()
@@ -559,6 +597,7 @@ vim.keymap.set('n', '<Leader>al', toggle_logging, { desc = 'AI Toggle logging on
 vim.keymap.set('v', '<Leader>ae', ai_explain, { desc = 'AI Explain selection' })
 vim.keymap.set('v', '<Leader>ar', ai_review, { desc = 'AI Review selection' })
 vim.keymap.set('v', '<Leader>af', ai_refactor, { desc = 'AI Refactor selection' })
+vim.keymap.set('v', '<Leader>ax', ai_fix, { desc = 'AI Fix selection (replace with corrected code)' })
 vim.keymap.set('v', '<Leader>aq', ai_chat, { desc = 'AI Chat about selection' })
 
 -- Command-line commands
@@ -567,6 +606,7 @@ vim.api.nvim_create_user_command('AICompleteSplit', ai_complete_split, {})
 vim.api.nvim_create_user_command('AIExplain', ai_explain, { range = true })
 vim.api.nvim_create_user_command('AIReview', ai_review, { range = true })
 vim.api.nvim_create_user_command('AIRefactor', ai_refactor, { range = true })
+vim.api.nvim_create_user_command('AIFix', ai_fix, { range = true })
 vim.api.nvim_create_user_command('AIGenerate', ai_generate, {})
 vim.api.nvim_create_user_command('AIChat', ai_chat, { range = true })
 vim.api.nvim_create_user_command('AISwitchBackend', switch_backend, {})
@@ -582,7 +622,7 @@ vim.opt.statusline = "%f %h%m%r%=%{luaeval('vim.env.VIM_AI_BACKEND or \"ollama\"
 print("AI Coding Assistant loaded! Leader = Space")
 print("Commands: <Space>ac (complete w/preview), <Space>as (complete split)")
 print("          <Space>ar (review), <Space>ag (generate), <Space>aq (interactive chat)")
-print("Visual: <Space>ae (explain), <Space>af (refactor), <Space>aq (chat)")
+print("Visual: <Space>ae (explain), <Space>af (refactor), <Space>ax (fix), <Space>aq (chat)")
 print("Switch backend: <Space>ab | Monitor: <Space>am | Logging: <Space>al")
 if log_enabled then
     print("Activity logging: ENABLED (log file: " .. log_file .. ")")
