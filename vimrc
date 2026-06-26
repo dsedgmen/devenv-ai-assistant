@@ -23,10 +23,17 @@ function! s:GetBackend()
     return $VIM_AI_BACKEND != "" ? $VIM_AI_BACKEND : "ollama"
 endfunction
 
-" Switch between Ollama and Claude
+" Switch between Ollama, Claude, and Gemini
 function! s:SwitchBackend()
     let current = s:GetBackend()
-    let new_backend = current == "ollama" ? "claude" : "ollama"
+    " Cycle through: ollama -> claude -> gemini -> ollama
+    if current == "ollama"
+        let new_backend = "claude"
+    elseif current == "claude"
+        let new_backend = "gemini"
+    else
+        let new_backend = "ollama"
+    endif
     let $VIM_AI_BACKEND = new_backend
     echo "Switched AI backend to: " . new_backend
 endfunction
@@ -183,5 +190,5 @@ set statusline=%f\ %h%m%r%=%{$VIM_AI_BACKEND!=''?$VIM_AI_BACKEND:'ollama'}\ \|\ 
 echo "AI Coding Assistant loaded! Leader = Space"
 echo "Commands: <Space>ac (complete inline), <Space>as (complete split)"
 echo "          <Space>ar (review), <Space>ag (generate), <Space>aq (chat)"
-echo "Visual: <Space>ae (explain), <Space>af (refactor), <Space>aq (chat)"
-echo "Switch backend: <Space>ab"
+echo "Visual: <Space>ae (explain), <Space>af (refactor), <Space>ax (fix), <Space>aq (chat)"
+echo "Switch backend: <Space>ab (Ollama/Claude/Gemini)"
