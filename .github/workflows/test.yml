@@ -1,0 +1,114 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint Scripts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Lint bash scripts
+        run: |
+          find . -name "*.sh" -type f -exec shellcheck {} \;
+
+      - name: Check Python syntax
+        run: |
+          python3 -m py_compile .local/bin/vim-ai-helper || true
+
+  test-installation:
+    name: Test Installation Scripts
+    runs-on: ubuntu-latest
+    container:
+      image: registry.fedoraproject.org/fedora:44
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install base dependencies
+        run: |
+          dnf install -y git
+
+      - name: Test install.sh (dry run)
+        run: |
+          bash -n install.sh
+          bash -n vim-ai-setup.sh
+
+      - name: Test LSP installation
+        run: |
+          bash -n install-lsp-treesitter.sh
+
+      - name: Test plugin installation
+        run: |
+          bash -n install-vim-plugins.sh
+          bash -n install-nvim-plugins.sh
+
+      - name: Test tree-sitter installation
+        run: |
+          bash -n install-treesitter-languages.sh
+
+      - name: Test container build scripts
+        run: |
+          bash -n containers/lsp-servers/build.sh
+          bash -n containers/vim/build.sh
+          bash -n containers/neovim/build.sh
+
+  test-configs:
+    name: Test Configurations
+    runs-on: ubuntu-latest
+    container:
+      image: registry.fedoraproject.org/fedora:44
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install neovim
+        run: dnf install -y neovim
+
+      - name: Check Lua syntax
+        run: |
+          find .config/nvim/lua -name "*.lua" -type f -exec nvim --headless -c "luafile {}" -c "quit" \;
+
+      - name: Install vim
+        run: dnf install -y vim-enhanced
+
+      - name: Test vimrc syntax
+        run: |
+          vim -u vimrc -c "quit"
+
+  test-container-builds:
+    name: Test Container Builds
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        container: [lsp-servers]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Test build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./containers/${{ matrix.container }}
+          file: ./containers/${{ matrix.container }}/Containerfile
+          push: false
+          tags: test/${{ matrix.container }}:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

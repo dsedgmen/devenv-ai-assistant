@@ -1,0 +1,186 @@
+# GitLab CI/CD Configuration for Vim AI Assistant
+# Builds containers and Flatpak packages
+
+stages:
+  - build
+  - test
+  - release
+
+variables:
+  REGISTRY: $CI_REGISTRY_IMAGE
+  CONTAINER_TAG: $CI_COMMIT_REF_SLUG
+
+# Container builds
+.container-build:
+  stage: build
+  image: quay.io/podman/stable
+  services:
+    - docker:dind
+  before_script:
+    - podman login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - cd containers/$CONTAINER_DIR
+    - podman build --format docker -t $REGISTRY/$IMAGE_NAME:$CONTAINER_TAG -f Containerfile .
+    - podman push $REGISTRY/$IMAGE_NAME:$CONTAINER_TAG
+  only:
+    changes:
+      - containers/**
+      - .gitlab-ci.yml
+
+build:lsp-servers:
+  extends: .container-build
+  variables:
+    CONTAINER_DIR: lsp-servers
+    IMAGE_NAME: lsp-servers
+
+build:vim:
+  extends: .container-build
+  variables:
+    CONTAINER_DIR: vim
+    IMAGE_NAME: vim
+  before_script:
+    - cd containers/vim
+    - cp ../../vimrc vimrc || echo "vimrc exists"
+    - cp ../../vim-ai-helper vim-ai-helper || echo "vim-ai-helper exists"
+
+build:neovim:
+  extends: .container-build
+  variables:
+    CONTAINER_DIR: neovim
+    IMAGE_NAME: neovim
+  before_script:
+    - cd containers/neovim
+    - mkdir -p config
+    - cp -r ../../.config/nvim config/ || echo "config exists"
+    - cp ../../vim-ai-helper vim-ai-helper || echo "vim-ai-helper exists"
+
+# Container tests
+.container-test:
+  stage: test
+  image: quay.io/podman/stable
+  before_script:
+    - podman login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - podman pull $REGISTRY/$IMAGE_NAME:$CONTAINER_TAG
+    - podman run --rm $REGISTRY/$IMAGE_NAME:$CONTAINER_TAG $TEST_COMMAND
+  dependencies: []
+
+test:lsp-servers:
+  extends: .container-test
+  variables:
+    IMAGE_NAME: lsp-servers
+    TEST_COMMAND: "python --help"
+  dependencies:
+    - build:lsp-servers
+
+test:vim:
+  extends: .container-test
+  variables:
+    IMAGE_NAME: vim
+    TEST_COMMAND: "--version"
+  dependencies:
+    - build:vim
+
+test:neovim:
+  extends: .container-test
+  variables:
+    IMAGE_NAME: neovim
+    TEST_COMMAND: "--version"
+  dependencies:
+    - build:neovim
+
+# Flatpak builds
+.flatpak-build:
+  stage: build
+  image: registry.fedoraproject.org/fedora:44
+  before_script:
+    - dnf install -y flatpak flatpak-builder ostree
+    - flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+    - flatpak install -y flathub org.freedesktop.Platform//23.08 org.freedesktop.Sdk//23.08
+  script:
+    - cd flatpak
+    - flatpak-builder --force-clean --repo=repo build-dir $MANIFEST
+    - flatpak build-bundle repo $BUNDLE_NAME.flatpak $APP_ID
+  artifacts:
+    paths:
+      - flatpak/*.flatpak
+    expire_in: 7 days
+  only:
+    changes:
+      - flatpak/**
+      - .gitlab-ci.yml
+
+build:neovim-flatpak:
+  extends: .flatpak-build
+  variables:
+    MANIFEST: org.neovim.Neovim.yaml
+    APP_ID: org.neovim.Neovim
+    BUNDLE_NAME: neovim-ai
+
+build:vim-flatpak:
+  extends: .flatpak-build
+  variables:
+    MANIFEST: org.vim.Vim.yaml
+    APP_ID: org.vim.Vim
+    BUNDLE_NAME: vim-ai
+
+build:extension-python-lsp:
+  extends: .flatpak-build
+  variables:
+    MANIFEST: extensions/org.neovim.Neovim.LSP.Python.yaml
+    APP_ID: org.neovim.Neovim.LSP.Python
+    BUNDLE_NAME: neovim-lsp-python
+
+build:extension-python-treesitter:
+  extends: .flatpak-build
+  variables:
+    MANIFEST: extensions/org.neovim.Neovim.TreeSitter.Python.yaml
+    APP_ID: org.neovim.Neovim.TreeSitter.Python
+    BUNDLE_NAME: neovim-treesitter-python
+
+# Tag latest images on main
+tag-latest:
+  stage: release
+  image: quay.io/podman/stable
+  before_script:
+    - podman login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - podman pull $REGISTRY/lsp-servers:$CONTAINER_TAG
+    - podman tag $REGISTRY/lsp-servers:$CONTAINER_TAG $REGISTRY/lsp-servers:latest
+    - podman push $REGISTRY/lsp-servers:latest
+    - podman pull $REGISTRY/vim:$CONTAINER_TAG
+    - podman tag $REGISTRY/vim:$CONTAINER_TAG $REGISTRY/vim:latest
+    - podman push $REGISTRY/vim:latest
+    - podman pull $REGISTRY/neovim:$CONTAINER_TAG
+    - podman tag $REGISTRY/neovim:$CONTAINER_TAG $REGISTRY/neovim:latest
+    - podman push $REGISTRY/neovim:latest
+  only:
+    - main
+  dependencies:
+    - build:lsp-servers
+    - build:vim
+    - build:neovim
+
+# Release artifacts on tags
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  script:
+    - echo "Creating release for $CI_COMMIT_TAG"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    description: "Release $CI_COMMIT_TAG"
+    assets:
+      links:
+        - name: "Neovim Flatpak"
+          url: "$CI_PROJECT_URL/-/jobs/artifacts/$CI_COMMIT_TAG/raw/flatpak/neovim-ai.flatpak?job=build:neovim-flatpak"
+        - name: "Vim Flatpak"
+          url: "$CI_PROJECT_URL/-/jobs/artifacts/$CI_COMMIT_TAG/raw/flatpak/vim-ai.flatpak?job=build:vim-flatpak"
+        - name: "LSP Servers Container"
+          url: "$REGISTRY/lsp-servers:$CI_COMMIT_TAG"
+        - name: "Vim Container"
+          url: "$REGISTRY/vim:$CI_COMMIT_TAG"
+        - name: "Neovim Container"
+          url: "$REGISTRY/neovim:$CI_COMMIT_TAG"
+  only:
+    - tags

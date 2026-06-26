@@ -1,0 +1,130 @@
+name: Build Flatpak
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'flatpak/**'
+      - '.github/workflows/build-flatpak.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'flatpak/**'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build-neovim-flatpak:
+    name: Build Neovim Flatpak
+    runs-on: ubuntu-latest
+    container:
+      image: bilelmoussaoui/flatpak-github-actions:freedesktop-23.08
+      options: --privileged
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          dnf install -y flatpak-builder ostree
+
+      - name: Build Flatpak
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: neovim-ai.flatpak
+          manifest-path: flatpak/org.neovim.Neovim.yaml
+          cache-key: flatpak-neovim-${{ github.sha }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neovim-flatpak
+          path: neovim-ai.flatpak
+          retention-days: 7
+
+  build-vim-flatpak:
+    name: Build Vim Flatpak
+    runs-on: ubuntu-latest
+    container:
+      image: bilelmoussaoui/flatpak-github-actions:freedesktop-23.08
+      options: --privileged
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          dnf install -y flatpak-builder ostree
+
+      - name: Build Flatpak
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: vim-ai.flatpak
+          manifest-path: flatpak/org.vim.Vim.yaml
+          cache-key: flatpak-vim-${{ github.sha }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vim-flatpak
+          path: vim-ai.flatpak
+          retention-days: 7
+
+  build-extensions:
+    name: Build Flatpak Extensions
+    runs-on: ubuntu-latest
+    container:
+      image: bilelmoussaoui/flatpak-github-actions:freedesktop-23.08
+      options: --privileged
+    strategy:
+      matrix:
+        extension:
+          - name: python-lsp
+            manifest: flatpak/extensions/org.neovim.Neovim.LSP.Python.yaml
+          - name: python-treesitter
+            manifest: flatpak/extensions/org.neovim.Neovim.TreeSitter.Python.yaml
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          dnf install -y flatpak-builder ostree
+
+      - name: Build Extension
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: ${{ matrix.extension.name }}.flatpak
+          manifest-path: ${{ matrix.extension.manifest }}
+          cache-key: flatpak-ext-${{ matrix.extension.name }}-${{ github.sha }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-extension-${{ matrix.extension.name }}
+          path: ${{ matrix.extension.name }}.flatpak
+          retention-days: 7
+
+  release:
+    name: Upload to Release
+    needs: [build-neovim-flatpak, build-vim-flatpak, build-extensions]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: flatpaks
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            flatpaks/**/*.flatpak
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

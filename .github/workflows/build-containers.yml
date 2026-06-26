@@ -1,0 +1,211 @@
+name: Build Containers
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'containers/**'
+      - '.github/workflows/build-containers.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'containers/**'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
+
+jobs:
+  build-lsp-servers:
+    name: Build LSP Servers Container
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/lsp-servers
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./containers/lsp-servers
+          file: ./containers/lsp-servers/Containerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            USER_UID=1000
+            USER_GID=1000
+
+  build-vim:
+    name: Build Vim Container
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/vim
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+
+      - name: Prepare build context
+        run: |
+          cd containers/vim
+          cp ~/.vimrc vimrc || cp ../../vimrc vimrc || echo "Using repo vimrc"
+          cp ~/.local/bin/vim-ai-helper vim-ai-helper || cp ../../vim-ai-helper vim-ai-helper || echo "Using repo vim-ai-helper"
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./containers/vim
+          file: ./containers/vim/Containerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            USER_UID=1000
+            USER_GID=1000
+            USERNAME=vimuser
+
+  build-neovim:
+    name: Build Neovim Container
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/neovim
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Prepare build context
+        run: |
+          cd containers/neovim
+          mkdir -p config
+          cp -r ~/.config/nvim config/ || cp -r ../../config/nvim config/ || echo "Using repo config"
+          cp ~/.local/bin/vim-ai-helper vim-ai-helper || cp ../../vim-ai-helper vim-ai-helper || echo "Using repo vim-ai-helper"
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./containers/neovim
+          file: ./containers/neovim/Containerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            USER_UID=1000
+            USER_GID=1000
+            USERNAME=vimuser
+
+  test-containers:
+    name: Test Containers
+    needs: [build-lsp-servers, build-vim, build-neovim]
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Test LSP Servers Container
+        run: |
+          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/lsp-servers:main python --version
+          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/lsp-servers:main go --help || true
+
+      - name: Test Vim Container
+        run: |
+          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/vim:main --version
+
+      - name: Test Neovim Container
+        run: |
+          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/neovim:main --version
+          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/neovim:main +checkhealth +qall || true
