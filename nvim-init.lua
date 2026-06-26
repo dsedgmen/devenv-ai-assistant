@@ -619,6 +619,17 @@ vim.api.nvim_create_user_command('AILogging', toggle_logging, {})
 -- Status line showing current AI backend
 vim.opt.statusline = "%f %h%m%r%=%{luaeval('vim.env.VIM_AI_BACKEND or \"ollama\"')} | %l,%c %P"
 
+-- Load LSP and Tree-sitter configurations (if installed)
+local lsp_ok, lsp_err = pcall(require, 'lsp-config')
+if not lsp_ok then
+    print("LSP not configured (run install script to set up)")
+end
+
+local ts_ok, ts_err = pcall(require, 'treesitter-config')
+if not ts_ok then
+    print("Tree-sitter not configured (run install script to set up)")
+end
+
 print("AI Coding Assistant loaded! Leader = Space")
 print("Commands: <Space>ac (complete w/preview), <Space>as (complete split)")
 print("          <Space>ar (review), <Space>ag (generate), <Space>aq (interactive chat)")
