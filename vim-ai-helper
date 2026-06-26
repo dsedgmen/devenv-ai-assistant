@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Unified AI helper for vim/neovim - supports both Ollama (Granite) and Claude API
+Unified AI helper for vim/neovim - supports Ollama (Granite), Claude API, and Gemini API
 """
 
 import sys
@@ -11,7 +11,9 @@ from typing import Optional
 # Configuration
 OLLAMA_MODEL = os.getenv("VIM_AI_OLLAMA_MODEL", "granite-code:latest")
 CLAUDE_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-DEFAULT_BACKEND = os.getenv("VIM_AI_BACKEND", "ollama")  # ollama or claude
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("VIM_AI_GEMINI_MODEL", "gemini-2.0-flash-exp")
+DEFAULT_BACKEND = os.getenv("VIM_AI_BACKEND", "ollama")  # ollama, claude, or gemini
 
 def get_ollama_response(prompt: str, system: str = "", stream: bool = False) -> str:
     """Get response from Ollama"""
@@ -82,12 +84,50 @@ def get_claude_response(prompt: str, system: str = "", stream: bool = False) -> 
     except Exception as e:
         return f"Error calling Claude: {str(e)}"
 
+def get_gemini_response(prompt: str, system: str = "", stream: bool = False) -> str:
+    """Get response from Gemini API"""
+    if not GEMINI_API_KEY:
+        return "Error: GEMINI_API_KEY environment variable not set"
+
+    try:
+        from google import genai
+        from google.genai.types import GenerateContentConfig
+
+        client = genai.Client(api_key=GEMINI_API_KEY)
+
+        # Combine system and user prompt for Gemini
+        full_prompt = f"{system}\n\n{prompt}" if system else prompt
+
+        if stream:
+            full_response = ""
+            for chunk in client.models.generate_content_stream(
+                model=GEMINI_MODEL,
+                contents=full_prompt
+            ):
+                if chunk.text:
+                    print(chunk.text, end='', flush=True)
+                    full_response += chunk.text
+            print()
+            return full_response
+        else:
+            response = client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=full_prompt
+            )
+            return response.text
+    except ImportError:
+        return "Error: python3-google-genai not installed. Run: sudo dnf install python3-google-genai"
+    except Exception as e:
+        return f"Error calling Gemini: {str(e)}"
+
 def get_ai_response(prompt: str, system: str = "", backend: Optional[str] = None, stream: bool = False) -> str:
     """Route to appropriate AI backend"""
     backend = backend or DEFAULT_BACKEND
 
     if backend == "claude":
         return get_claude_response(prompt, system, stream)
+    elif backend == "gemini":
+        return get_gemini_response(prompt, system, stream)
     else:
         return get_ollama_response(prompt, system, stream)
 
@@ -142,11 +182,13 @@ def main():
         print("  refactor <file> <instruction> <lang> [backend] - Refactor code", file=sys.stderr)
         print("  generate <description> <language> [backend] - Generate code", file=sys.stderr)
         print("  chat <question> [context_file] [backend] - Ask questions", file=sys.stderr)
-        print("\nBackends: ollama (default), claude", file=sys.stderr)
+        print("\nBackends: ollama (default), claude, gemini", file=sys.stderr)
         print("\nEnvironment variables:", file=sys.stderr)
-        print("  VIM_AI_BACKEND=ollama|claude", file=sys.stderr)
+        print("  VIM_AI_BACKEND=ollama|claude|gemini", file=sys.stderr)
         print("  VIM_AI_OLLAMA_MODEL=granite-code:latest", file=sys.stderr)
+        print("  VIM_AI_GEMINI_MODEL=gemini-2.0-flash-exp", file=sys.stderr)
         print("  ANTHROPIC_API_KEY=your-key", file=sys.stderr)
+        print("  GEMINI_API_KEY=your-key", file=sys.stderr)
         sys.exit(1)
 
     command = sys.argv[1]

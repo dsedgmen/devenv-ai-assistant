@@ -153,7 +153,15 @@ end
 -- Switch between Ollama and Claude
 local function switch_backend()
     local current = get_backend()
-    local new_backend = current == "ollama" and "claude" or "ollama"
+    -- Cycle through: ollama -> claude -> gemini -> ollama
+    local new_backend
+    if current == "ollama" then
+        new_backend = "claude"
+    elseif current == "claude" then
+        new_backend = "gemini"
+    else
+        new_backend = "ollama"
+    end
     vim.env.VIM_AI_BACKEND = new_backend
     log_activity("Backend switched: " .. current .. " -> " .. new_backend)
     print("Switched AI backend to: " .. new_backend)
@@ -587,7 +595,7 @@ vim.keymap.set('n', '<Leader>as', ai_complete_split, { desc = 'AI Complete code 
 vim.keymap.set('n', '<Leader>ar', ai_review, { desc = 'AI Review code' })
 vim.keymap.set('n', '<Leader>ag', ai_generate, { desc = 'AI Generate code' })
 vim.keymap.set('n', '<Leader>aq', ai_chat, { desc = 'AI Interactive Chat' })
-vim.keymap.set('n', '<Leader>ab', switch_backend, { desc = 'AI Switch backend (Ollama/Claude)' })
+vim.keymap.set('n', '<Leader>ab', switch_backend, { desc = 'AI Switch backend (Ollama/Claude/Gemini)' })
 
 -- AI monitoring commands
 vim.keymap.set('n', '<Leader>am', toggle_monitor, { desc = 'AI Toggle monitor panel' })
