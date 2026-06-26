@@ -1,0 +1,24 @@
+# Flatpak Extension: Tree-sitter Python Parser
+# Install with: flatpak install org.neovim.Neovim.TreeSitter.Python
+
+id: org.neovim.Neovim.TreeSitter.Python
+branch: stable
+runtime: org.freedesktop.Platform
+runtime-version: '23.08'
+sdk: org.freedesktop.Sdk
+build-extension: true
+separate-locales: false
+
+build-options:
+  prefix: /app/tree-sitter/python
+
+modules:
+  - name: tree-sitter-python
+    buildsystem: simple
+    build-commands:
+      - gcc -shared -fPIC src/parser.c src/scanner.c -o python.so
+      - install -Dm755 python.so /app/tree-sitter/python/python.so
+    sources:
+      - type: archive
+        url: https://github.com/tree-sitter/tree-sitter-python/archive/v0.23.8.tar.gz
+        sha256: <PLACEHOLDER>

@@ -1,0 +1,31 @@
+# LSP Servers Container
+# Provides pylsp, gopls, bash-language-server, rust-analyzer in isolated container
+# Based on Fedora 44 (matches host)
+
+FROM registry.fedoraproject.org/fedora:44
+
+LABEL maintainer="vim-ai-assistant"
+LABEL description="LSP servers for vim/neovim in container"
+
+# Install LSP servers from Fedora repos
+RUN dnf install -y \
+    python3-lsp-server \
+    gopls \
+    nodejs-bash-language-server \
+    rust-analyzer \
+    && dnf clean all
+
+# Create non-root user to match host UID
+ARG USER_UID=1000
+ARG USER_GID=1000
+RUN groupadd -g ${USER_GID} lspuser && \
+    useradd -m -u ${USER_UID} -g ${USER_GID} lspuser
+
+# Expose LSP servers via stdio
+USER lspuser
+WORKDIR /workspace
+
+# Entry point allows selecting which LSP server to run
+COPY lsp-entrypoint.sh /usr/local/bin/
+ENTRYPOINT ["/usr/local/bin/lsp-entrypoint.sh"]
+CMD ["pylsp"]

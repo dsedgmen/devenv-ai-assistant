@@ -1,0 +1,74 @@
+# Neovim Container with AI Assistant
+# Complete neovim setup with LSP, Tree-sitter, AI, and plugins
+# Based on Fedora 44
+
+FROM registry.fedoraproject.org/fedora:44
+
+LABEL maintainer="vim-ai-assistant"
+LABEL description="Neovim with AI assistant, LSP, tree-sitter, and plugins"
+
+# Install neovim and all dependencies
+RUN dnf install -y \
+    neovim \
+    python3-lsp-server \
+    gopls \
+    nodejs-bash-language-server \
+    rust-analyzer \
+    tree-sitter-python \
+    tree-sitter-bash \
+    tree-sitter-c \
+    tree-sitter-cpp \
+    tree-sitter-go \
+    tree-sitter-javascript \
+    tree-sitter-typescript \
+    tree-sitter-json \
+    tree-sitter-yaml \
+    tree-sitter-html \
+    tree-sitter-css \
+    tree-sitter-lua \
+    tree-sitter-rust \
+    tree-sitter-java \
+    tree-sitter-ruby \
+    vim-fugitive \
+    vim-gitgutter \
+    vim-nerdtree \
+    vim-ctrlp \
+    vim-commentary \
+    vim-rhubarb \
+    vim-trailing-whitespace \
+    vim-powerline \
+    git \
+    python3 \
+    python3-google-genai \
+    curl \
+    && dnf clean all
+
+# Create non-root user
+ARG USER_UID=1000
+ARG USER_GID=1000
+ARG USERNAME=vimuser
+
+RUN groupadd -g ${USER_GID} ${USERNAME} && \
+    useradd -m -u ${USER_UID} -g ${USER_GID} -s /bin/bash ${USERNAME}
+
+USER ${USERNAME}
+WORKDIR /home/${USERNAME}
+
+# Copy neovim configuration
+COPY --chown=${USERNAME}:${USERNAME} config/nvim /home/${USERNAME}/.config/nvim
+
+# Copy AI helper script
+COPY --chown=${USERNAME}:${USERNAME} vim-ai-helper /home/${USERNAME}/.local/bin/
+RUN chmod +x /home/${USERNAME}/.local/bin/vim-ai-helper
+
+# Set up environment
+ENV PATH="/home/${USERNAME}/.local/bin:${PATH}"
+ENV VIM_AI_BACKEND=ollama
+ENV EDITOR=nvim
+
+# Mount points for workspace and config
+VOLUME ["/workspace"]
+WORKDIR /workspace
+
+ENTRYPOINT ["nvim"]
+CMD ["--help"]

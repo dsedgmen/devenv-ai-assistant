@@ -1,0 +1,91 @@
+app-id: org.vim.Vim
+runtime: org.freedesktop.Platform
+runtime-version: '23.08'
+sdk: org.freedesktop.Sdk
+command: vim
+
+finish-args:
+  # Filesystem access
+  - --filesystem=host
+  - --filesystem=xdg-config/git:ro
+
+  # Network for AI backends
+  - --share=network
+
+  # IPC for clipboard
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+
+  # Device access
+  - --device=dri
+
+modules:
+  # Build vim from Fedora source RPM
+  - name: vim
+    buildsystem: simple
+    build-commands:
+      - ./configure --prefix=/app --enable-pythoninterp=yes --enable-python3interp=yes
+      - make -j$(nproc)
+      - make install
+    sources:
+      - type: archive
+        url: https://github.com/vim/vim/archive/v9.2.0.tar.gz
+        sha256: <PLACEHOLDER - use actual SHA256>
+
+  # Python LSP server
+  - name: python-lsp-server
+    buildsystem: simple
+    build-commands:
+      - pip3 install --prefix=/app --no-deps .
+    sources:
+      - type: archive
+        url: https://files.pythonhosted.org/packages/source/p/python-lsp-server/python-lsp-server-1.7.4.tar.gz
+        sha256: <PLACEHOLDER>
+
+  # ALE plugin
+  - name: vim-ale
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/share/vim/vimfiles
+      - cp -r * /app/share/vim/vimfiles/
+    sources:
+      - type: git
+        url: https://github.com/dense-analysis/ale.git
+        tag: v3.3.0
+
+  # Fugitive plugin
+  - name: vim-fugitive
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/share/vim/vimfiles
+      - cp -r * /app/share/vim/vimfiles/
+    sources:
+      - type: git
+        url: https://github.com/tpope/vim-fugitive.git
+        tag: v3.7
+
+  # AI helper script
+  - name: vim-ai-helper
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 vim-ai-helper /app/bin/vim-ai-helper
+      - install -Dm644 vimrc /app/share/vim/vimrc
+    sources:
+      - type: file
+        path: ../vimrc
+      - type: file
+        path: ../.local/bin/vim-ai-helper
+
+add-extensions:
+  org.vim.Vim.LSP:
+    directory: lsp
+    subdirectories: true
+    no-autodownload: false
+    autodelete: false
+
+  org.vim.Vim.Plugin:
+    directory: plugins
+    subdirectories: true
+    no-autodownload: false
+    autodelete: false

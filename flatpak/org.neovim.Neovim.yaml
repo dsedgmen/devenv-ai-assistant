@@ -1,0 +1,159 @@
+app-id: org.neovim.Neovim
+runtime: org.freedesktop.Platform
+runtime-version: '23.08'
+sdk: org.freedesktop.Sdk
+command: nvim
+
+finish-args:
+  # Filesystem access
+  - --filesystem=host
+  - --filesystem=xdg-config/git:ro
+
+  # Network for AI backends
+  - --share=network
+
+  # IPC for clipboard
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+
+  # Device access
+  - --device=dri
+
+modules:
+  # Build neovim from source
+  - name: neovim
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCMAKE_INSTALL_PREFIX=/app
+    sources:
+      - type: archive
+        url: https://github.com/neovim/neovim/archive/v0.12.2.tar.gz
+        sha256: <PLACEHOLDER>
+
+  # Tree-sitter CLI
+  - name: tree-sitter-cli
+    buildsystem: simple
+    build-commands:
+      - cargo install --path . --root /app
+    sources:
+      - type: archive
+        url: https://github.com/tree-sitter/tree-sitter/archive/v0.26.9.tar.gz
+        sha256: <PLACEHOLDER>
+
+  # Python LSP server
+  - name: python-lsp-server
+    buildsystem: simple
+    build-commands:
+      - pip3 install --prefix=/app --no-deps .
+    sources:
+      - type: archive
+        url: https://files.pythonhosted.org/packages/source/p/python-lsp-server/python-lsp-server-1.7.4.tar.gz
+        sha256: <PLACEHOLDER>
+
+  # Fugitive plugin
+  - name: vim-fugitive
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/share/nvim/site/pack/plugins/start/fugitive
+      - cp -r * /app/share/nvim/site/pack/plugins/start/fugitive/
+    sources:
+      - type: git
+        url: https://github.com/tpope/vim-fugitive.git
+        tag: v3.7
+
+  # GitGutter plugin
+  - name: vim-gitgutter
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/share/nvim/site/pack/plugins/start/gitgutter
+      - cp -r * /app/share/nvim/site/pack/plugins/start/gitgutter/
+    sources:
+      - type: git
+        url: https://github.com/airblade/vim-gitgutter.git
+        commit: ded11946c04aeab5526f869d7F8d87babcf0f6a4
+
+  # NERDTree plugin
+  - name: vim-nerdtree
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/share/nvim/site/pack/plugins/start/nerdtree
+      - cp -r * /app/share/nvim/site/pack/plugins/start/nerdtree/
+    sources:
+      - type: git
+        url: https://github.com/preservim/nerdtree.git
+        tag: 7.1.3
+
+  # CtrlP plugin
+  - name: vim-ctrlp
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/share/nvim/site/pack/plugins/start/ctrlp
+      - cp -r * /app/share/nvim/site/pack/plugins/start/ctrlp/
+    sources:
+      - type: git
+        url: https://github.com/ctrlpvim/ctrlp.vim.git
+        tag: 1.81
+
+  # Commentary plugin
+  - name: vim-commentary
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/share/nvim/site/pack/plugins/start/commentary
+      - cp -r * /app/share/nvim/site/pack/plugins/start/commentary/
+    sources:
+      - type: git
+        url: https://github.com/tpope/vim-commentary.git
+        commit: e87cd90dc09c2a203e13af9704bd0ef79303d755
+
+  # AI helper and configs
+  - name: vim-ai-assistant
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 vim-ai-helper /app/bin/vim-ai-helper
+      - install -Dm644 init.lua /app/share/nvim/init.lua
+      - install -Dm644 lsp-config.lua /app/share/nvim/lua/lsp-config.lua
+      - install -Dm644 treesitter-config.lua /app/share/nvim/lua/treesitter-config.lua
+      - install -Dm644 plugins-config.lua /app/share/nvim/lua/plugins-config.lua
+    sources:
+      - type: file
+        path: ../.local/bin/vim-ai-helper
+      - type: file
+        path: ../.config/nvim/init.lua
+      - type: file
+        path: ../.config/nvim/lua/lsp-config.lua
+      - type: file
+        path: ../.config/nvim/lua/treesitter-config.lua
+      - type: file
+        path: ../.config/nvim/lua/plugins-config.lua
+
+# Extensions for LSP servers and tree-sitter parsers
+add-extensions:
+  # LSP servers as addons
+  org.neovim.Neovim.LSP.Python:
+    directory: lsp/python
+    no-autodownload: false
+    autodelete: false
+
+  org.neovim.Neovim.LSP.Go:
+    directory: lsp/go
+    no-autodownload: false
+    autodelete: false
+
+  org.neovim.Neovim.LSP.Bash:
+    directory: lsp/bash
+    no-autodownload: false
+    autodelete: false
+
+  org.neovim.Neovim.LSP.Rust:
+    directory: lsp/rust
+    no-autodownload: false
+    autodelete: false
+
+  # Tree-sitter parsers as addons
+  org.neovim.Neovim.TreeSitter:
+    directory: tree-sitter
+    subdirectories: true
+    no-autodownload: false
+    autodelete: false
