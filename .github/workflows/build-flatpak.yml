@@ -38,7 +38,7 @@ jobs:
           cache-key: flatpak-neovim-${{ github.sha }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: neovim-flatpak
           path: neovim-ai.flatpak
@@ -67,7 +67,7 @@ jobs:
           cache-key: flatpak-vim-${{ github.sha }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: vim-flatpak
           path: vim-ai.flatpak
@@ -103,7 +103,7 @@ jobs:
           cache-key: flatpak-ext-${{ matrix.extension.name }}-${{ github.sha }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: flatpak-extension-${{ matrix.extension.name }}
           path: ${{ matrix.extension.name }}.flatpak
