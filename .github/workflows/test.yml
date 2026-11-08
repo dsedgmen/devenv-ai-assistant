@@ -53,10 +53,11 @@ jobs:
 
       - name: Test nvim-init.lua loads
         run: |
-          mkdir -p /tmp/nvim-test/lua
-          cp nvim-init.lua /tmp/nvim-test/init.lua
-          nvim --headless -u /tmp/nvim-test/init.lua -c "quit" || true
+          # Headless + clean runtime; do not load system packpath plugins.
+          nvim --headless -u nvim-init.lua -i NONE -c "quit"
 
       - name: Test vimrc syntax
         run: |
-          vim -u vimrc -c "quit"
+          # -N nocompatible, -e/-s ex+silent: load vimrc without hit-enter prompt
+          # from the trailing echo banners (which hang CI on "Press ENTER").
+          vim -Nu vimrc -e -s -c "quit"

@@ -32,5 +32,5 @@ COPR: `dsedgmen/devenv` → `dnf install devenv-ai-assistant-neovim` /
 ## Verify
 
 - `bash -n install.sh devenv-ai-setup.sh`
-- `vim -u vimrc -c quit` when available
+- `vim -Nu vimrc -e -s -c quit` when available (ex+silent; avoids hit-enter)
 - `./scripts/rpm-version.sh --shell` and local `rpmbuild -ba` when changing packaging
