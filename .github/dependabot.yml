@@ -1,8 +1,7 @@
-# Dependabot configuration for automated dependency updates
+# Dependabot: Actions only. Container images live in devenv-packager.
 
 version: 2
 updates:
-  # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -12,34 +11,3 @@ updates:
       - "github-actions"
     commit-message:
       prefix: "ci"
-
-  # Docker containers
-  - package-ecosystem: "docker"
-    directory: "/containers/lsp-servers"
-    schedule:
-      interval: "weekly"
-    labels:
-      - "dependencies"
-      - "containers"
-    commit-message:
-      prefix: "docker"
-
-  - package-ecosystem: "docker"
-    directory: "/containers/vim"
-    schedule:
-      interval: "weekly"
-    labels:
-      - "dependencies"
-      - "containers"
-    commit-message:
-      prefix: "docker"
-
-  - package-ecosystem: "docker"
-    directory: "/containers/neovim"
-    schedule:
-      interval: "weekly"
-    labels:
-      - "dependencies"
-      - "containers"
-    commit-message:
-      prefix: "docker"

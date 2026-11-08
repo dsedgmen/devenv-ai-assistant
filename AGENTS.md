@@ -2,7 +2,8 @@
 
 ## Purpose
 
-Vim/Neovim **AI keymaps** that call `devenv-ai-helper`. Flat root layout:
+Vim/Neovim **AI keymaps** that call `devenv-ai-helper`. Shallow root layout
+(editor configs at the repo root; not a temporary “pre-public” state):
 
 | File | Role |
 |------|------|
