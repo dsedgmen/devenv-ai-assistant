@@ -1,0 +1,65 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    devenv-ai-assistant — Quick Reference                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌─ INSTALLATION ────────────────────────────────────────────────────────────────┐
+│                                                                               │
+│  ./install.sh                                                                 │
+│  ~/.config/devenv-ai-setup.sh     # optional: Ollama + Python clients         │
+│                                                                               │
+│  Helper:  sudo dnf copr enable dsedgmen/devenv && dnf install devenv-ai-helper│
+│  LSP/TS:  ../devenv-lsp-setup && ./install.sh                                 │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ KEYBINDINGS (Leader = Space) ────────────────────────────────────────────────┐
+│                                                                               │
+│  NORMAL MODE:                                                                 │
+│    <Space>ac  →  Complete code (preview/accept, async)                       │
+│    <Space>ar  →  Review entire file                                          │
+│    <Space>ag  →  Generate code (preview/accept)                              │
+│    <Space>aq  →  Multi-turn chat                                             │
+│    <Space>ab  →  Switch backend (Ollama → Claude → Gemini)                   │
+│    <Space>am  →  Toggle AI activity monitor                                  │
+│                                                                               │
+│  With devenv-lsp-setup installed:                                            │
+│    <Space>mf  →  Code flowchart Mermaid                                      │
+│    <Space>mF  →  Code flowchart ASCII                                        │
+│                                                                               │
+│  VISUAL MODE:                                                                 │
+│    <Space>ae  →  Explain selection                                           │
+│    <Space>ar  →  Review selection                                            │
+│    <Space>af  →  Refactor selection (preview/accept)                         │
+│    <Space>ax  →  Fix selection (preview/accept)                              │
+│    <Space>aq  →  Chat about selection                                        │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ COMMANDS ────────────────────────────────────────────────────────────────────┐
+│                                                                               │
+│  :AIComplete  :AIExplain  :AIReview  :AIRefactor  :AIFix                      │
+│  :AIGenerate  :AIChat  :AISwitchBackend  :AIMonitor  :AILogging               │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ BACKENDS (prefer DEVENV_AI_*; VIM_AI_* still works) ─────────────────────────┐
+│                                                                               │
+│  export DEVENV_AI_BACKEND=ollama|claude|gemini|openai                         │
+│  export DEVENV_AI_OLLAMA_MODEL=granite-code:latest                            │
+│  export ANTHROPIC_API_KEY=...   # claude                                      │
+│  export GEMINI_API_KEY=...      # gemini                                      │
+│  Toggle in editor: <Space>ab                                                  │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ FILES ───────────────────────────────────────────────────────────────────────┐
+│                                                                               │
+│  nvim-init.lua          Neovim AI config → ~/.config/nvim/init.lua            │
+│  vimrc                  Vim AI config → ~/.vimrc                              │
+│  install.sh             Install editor configs + resolve helper               │
+│  devenv-ai-setup.sh     Optional Ollama / client packages                     │
+│  GEMINI_SETUP.md        Gemini backend notes                                  │
+│                                                                               │
+│  CLI docs: https://github.com/dsedgmen/devenv-ai-helper                       │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘

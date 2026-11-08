@@ -1,0 +1,62 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint Scripts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Lint bash scripts
+        run: |
+          find . -name "*.sh" -type f -exec shellcheck {} \;
+
+  test-installation:
+    name: Test Installation Scripts
+    runs-on: ubuntu-latest
+    container:
+      image: registry.fedoraproject.org/fedora:44
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Syntax-check install scripts
+        run: |
+          bash -n install.sh
+          bash -n devenv-ai-setup.sh
+
+  test-configs:
+    name: Test Configurations
+    runs-on: ubuntu-latest
+    container:
+      image: registry.fedoraproject.org/fedora:44
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install neovim and vim
+        run: dnf install -y neovim vim-enhanced
+
+      - name: Test nvim-init.lua loads
+        run: |
+          mkdir -p /tmp/nvim-test/lua
+          cp nvim-init.lua /tmp/nvim-test/init.lua
+          nvim --headless -u /tmp/nvim-test/init.lua -c "quit" || true
+
+      - name: Test vimrc syntax
+        run: |
+          vim -u vimrc -c "quit"

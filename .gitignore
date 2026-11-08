@@ -1,0 +1,38 @@
+# Secrets / credentials (never commit)
+.env
+.env.*
+!.env.example
+*.token
+*.pem
+*.key
+credentials.json
+secrets.yaml
+secrets.yml
+
+# Local agent / prompt config
+agents.json
+**/agents.local.json
+prompts/
+prompt/
+*.prompt
+*.prompts
+*_prompt.txt
+*_prompt.md
+system_prompt*
+.system-prompt*
+
+# Chat / context dumps
+*.chat.json
+*-ai-history.json
+**/history.json
+context/
+*.context
+
+# Editor / tooling
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.backup
+.DS_Store

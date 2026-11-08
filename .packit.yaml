@@ -1,0 +1,60 @@
+# Packit → Fedora COPR
+# main = beta snapshots; tags = stable/rc (also see COPR webhook)
+
+specfile_path: devenv-ai-assistant.spec
+
+files_to_sync:
+  - devenv-ai-assistant.spec
+  - .packit.yaml
+  - VERSION
+  - scripts/rpm-version.sh
+
+upstream_package_name: devenv-ai-assistant
+downstream_package_name: devenv-ai-assistant
+
+actions:
+  # Packit asks for upstream version string
+  get-current-version:
+    - bash -c 'chmod +x ./scripts/rpm-version.sh; ./scripts/rpm-version.sh --shell | sed -n "s/^VERSION=//p" | tr -d "'\''"'
+
+jobs:
+  # Beta: every push to main
+  - job: copr_build
+    trigger: commit
+    branch: main
+    targets:
+      - fedora-rawhide-x86_64
+      - fedora-44-x86_64
+      - fedora-43-x86_64
+
+  # RC: release branches
+  - job: copr_build
+    trigger: commit
+    branch: release/.+
+    targets:
+      - fedora-rawhide-x86_64
+      - fedora-44-x86_64
+      - fedora-43-x86_64
+
+  # PR checks
+  - job: copr_build
+    trigger: pull_request
+    targets:
+      - fedora-rawhide-x86_64
+      - fedora-44-x86_64
+      - fedora-43-x86_64
+
+  # Stable / RC from GitHub Release
+  - job: copr_build
+    trigger: release
+    targets:
+      - fedora-rawhide-x86_64
+      - fedora-44-x86_64
+      - fedora-43-x86_64
+
+  - job: propose_downstream
+    trigger: release
+    dist_git_branches:
+      - fedora-rawhide
+      - fedora-44
+      - fedora-43

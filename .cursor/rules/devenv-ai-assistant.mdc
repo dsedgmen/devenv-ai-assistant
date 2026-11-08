@@ -1,0 +1,10 @@
+# devenv-ai-assistant agent rules
+
+Follow [AGENTS.md](../../AGENTS.md). Summary:
+
+- Flat editor-AI repo: `nvim-init.lua`, `vimrc`, `install.sh`, docs; RPM via
+  `devenv-ai-assistant.spec` + `rpm/` loaders (no overwrite of user init).
+- CLI in devenv-ai-helper; LSP/TS in devenv-lsp-setup; images in devenv-packager.
+- Keep keymap → CLI subcommands and `DEVENV_AI_*` / `VIM_AI_*` fallback stable.
+- Never commit secrets or chat dumps.
+- Verify with `bash -n install.sh` and editor/RPM checks when packaging changes.
