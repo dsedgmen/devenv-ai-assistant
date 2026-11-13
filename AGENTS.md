@@ -21,10 +21,11 @@ COPR: `dsedgmen/devenv` → `dnf install devenv-ai-assistant-neovim` /
 
 ## Constraints
 
-1. Editor AI only — do not re-vendor helper, lsp-setup, or packaging.
+1. Editor AI only — do not re-vendor helper, lsp-setup, flowchart, or packaging.
 2. Keep CLI subcommands: `complete`, `explain`, `review`, `refactor`, `generate`, `chat`.
 3. Prefer `DEVENV_AI_*`; accept `VIM_AI_*` fallback.
-4. Soft-require `lsp-config` / `treesitter-config` / `code-flowchart` / `plugins-config`.
+4. Soft-require `lsp-config` / `treesitter-config` / `code-flowchart` / `plugins-config`
+   (`code-flowchart` from devenv-code-flowchart; LSP/TS from devenv-lsp-setup).
 5. No secrets or live prompts in git; no third-party AI calls in CI.
 6. RPM must not overwrite `~/.vimrc` or `~/.config/nvim/init.lua`.
 7. Spec macros `devenv_ai_ver` / `devenv_ai_rel` — do not hardcode Version for CI.

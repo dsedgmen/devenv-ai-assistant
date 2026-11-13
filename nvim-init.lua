@@ -591,7 +591,7 @@ vim.api.nvim_create_user_command("AILogging", toggle_logging, {})
 
 vim.opt.statusline = "%f %h%m%r%=%{luaeval('(vim.env.DEVENV_AI_BACKEND or vim.env.VIM_AI_BACKEND) or \"ollama\"')} | %l,%c %P"
 
--- Optional modules from devenv-lsp-setup / install-nvim-plugins.sh (soft-require)
+-- Optional modules from devenv-lsp-setup / devenv-code-flowchart / plugins (soft-require)
 pcall(require, "plugins-config")
 pcall(require, "lsp-config")
 pcall(require, "treesitter-config")
@@ -604,7 +604,7 @@ print("devenv-ai-assistant loaded (Leader = Space)")
 print("  AI: <Space>ac complete | <Space>aq chat | <Space>ag generate | <Space>ab backend | <Space>am monitor")
 print("  Visual: <Space>ae explain | <Space>af refactor | <Space>ax fix")
 if flow_ok then
-  print("  Flowchart: <Space>mf Mermaid | <Space>mF ASCII (devenv-lsp-setup)")
+  print("  Flowchart: <Space>mf Mermaid | <Space>mF ASCII (devenv-code-flowchart)")
 end
 if log_enabled then
   log_activity("AI Assistant initialized")

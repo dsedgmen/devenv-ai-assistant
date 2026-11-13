@@ -8,6 +8,8 @@ refactor, generate, chat). Calls the external
 
 LSP, Tree-sitter, and productivity plugins live in
 [devenv-lsp-setup](https://github.com/dsedgmen/devenv-lsp-setup).
+Offline call-graph flowcharts live in
+[devenv-code-flowchart](https://github.com/dsedgmen/devenv-code-flowchart).
 Container images and Flatpak live in
 [devenv-packager](https://github.com/dsedgmen/devenv-packager).
 
@@ -16,7 +18,7 @@ Container images and Flatpak live in
 - Code completion, explanation, review, refactor, generate, chat
 - Backends via helper: Ollama, Claude, Gemini, OpenAI-compatible (internal APIs)
 - Async AI in Neovim; apply preview for complete/refactor/generate
-- Soft-loads optional LSP/Treesitter/flowchart modules from devenv-lsp-setup
+- Soft-loads optional LSP/Treesitter (devenv-lsp-setup) and flowchart (devenv-code-flowchart)
 
 ## Install (Fedora COPR)
 
@@ -38,7 +40,8 @@ Shared configs land in `/usr/share/devenv-ai-assistant/`.
 1. **devenv-ai-helper** — Fedora COPR RPM, PATH install, or sibling clone  
    https://github.com/dsedgmen/devenv-ai-helper  
 2. Optional: `ollama`, `python3-ollama`, `python3-openai` (Fedora repos)
-3. Optional: [devenv-lsp-setup](https://github.com/dsedgmen/devenv-lsp-setup) for LSP/TS/flowchart
+3. Optional: [devenv-lsp-setup](https://github.com/dsedgmen/devenv-lsp-setup) for LSP/TS
+4. Optional: [devenv-code-flowchart](https://github.com/dsedgmen/devenv-code-flowchart) for `<Space>mf` / `<Space>mF`
 
 ```bash
 # Helper only (if not using the COPR block above)
@@ -70,6 +73,10 @@ cd devenv-ai-assistant
 # Optional LSP / Treesitter / plugins
 git clone https://github.com/dsedgmen/devenv-lsp-setup.git ../devenv-lsp-setup
 (cd ../devenv-lsp-setup && ./install.sh && ./install-lsp-treesitter.sh)
+
+# Optional offline flowchart
+git clone https://github.com/dsedgmen/devenv-code-flowchart.git ../devenv-code-flowchart
+(cd ../devenv-code-flowchart && ./install.sh)
 ```
 
 `install.sh` resolves the helper from `DEVENV_AI_HELPER_DIR` (or `VIM_AI_HELPER_DIR`),
@@ -101,7 +108,8 @@ Leader key: **Space**.
 | `<Space>aq` | `:AIChat` | Ask about selection |
 
 Flowchart maps (`<Space>mf` / `<Space>mF`) require
-[devenv-lsp-setup](https://github.com/dsedgmen/devenv-lsp-setup).
+[devenv-code-flowchart](https://github.com/dsedgmen/devenv-code-flowchart)
+(and Treesitter from devenv-lsp-setup).
 
 See [QUICKREF.txt](QUICKREF.txt) for the full map.
 
