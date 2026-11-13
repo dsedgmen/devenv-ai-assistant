@@ -30,6 +30,12 @@ COPR: `dsedgmen/devenv` → `dnf install devenv-ai-assistant-neovim` /
 6. RPM must not overwrite `~/.vimrc` or `~/.config/nvim/init.lua`.
 7. Spec macros `devenv_ai_ver` / `devenv_ai_rel` — do not hardcode Version for CI.
 
+## Packaging
+
+Aligned with devenv-ai-helper: `VERSION`, `scripts/rpm-version.sh`, COPR
+`make_srpm`, Packit, `rpm.yml` / `security.yml` / `release.yml` / `test.yml`.
+Separate RPMs: `devenv-ai-assistant`, `-neovim`, `-vim`. See RELEASE.md.
+
 ## Verify
 
 - `bash -n install.sh devenv-ai-setup.sh`

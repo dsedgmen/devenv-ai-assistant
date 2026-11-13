@@ -7,57 +7,36 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint Scripts
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install shellcheck
-        run: sudo apt-get update && sudo apt-get install -y shellcheck
-
-      - name: Lint bash scripts
-        run: |
-          find . -name "*.sh" -type f -exec shellcheck {} \;
+      - uses: actions/checkout@v5
+      - run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - run: find . -name "*.sh" -type f -print0 | xargs -0 -r shellcheck
 
   test-installation:
     name: Test Installation Scripts
-    runs-on: ubuntu-latest
-    container:
-      image: registry.fedoraproject.org/fedora:44
-
+    runs-on: ubuntu-24.04
+    container: fedora:latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Syntax-check install scripts
-        run: |
+      - uses: actions/checkout@v5
+      - run: |
           bash -n install.sh
           bash -n devenv-ai-setup.sh
 
   test-configs:
     name: Test Configurations
-    runs-on: ubuntu-latest
-    container:
-      image: registry.fedoraproject.org/fedora:44
-
+    runs-on: ubuntu-24.04
+    container: fedora:latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install neovim and vim
-        run: dnf install -y neovim vim-enhanced
-
+      - uses: actions/checkout@v5
+      - run: dnf install -y neovim vim-enhanced
       - name: Test nvim-init.lua loads
-        run: |
-          # Headless + clean runtime; do not load system packpath plugins.
-          nvim --headless -u nvim-init.lua -i NONE -c "quit"
-
+        run: nvim --headless -u nvim-init.lua -i NONE -c "quit"
       - name: Test vimrc syntax
-        run: |
-          # -N nocompatible, -e/-s ex+silent: load vimrc without hit-enter prompt
-          # from the trailing echo banners (which hang CI on "Press ENTER").
-          vim -Nu vimrc -e -s -c "quit"
+        run: vim -Nu vimrc -e -s -c "quit"

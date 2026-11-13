@@ -1,9 +1,13 @@
 # devenv-ai-assistant
 
 [![Test](https://github.com/dsedgmen/devenv-ai-assistant/actions/workflows/test.yml/badge.svg)](https://github.com/dsedgmen/devenv-ai-assistant/actions/workflows/test.yml)
+[![RPM](https://github.com/dsedgmen/devenv-ai-assistant/actions/workflows/rpm.yml/badge.svg)](https://github.com/dsedgmen/devenv-ai-assistant/actions/workflows/rpm.yml)
+[![Security](https://github.com/dsedgmen/devenv-ai-assistant/actions/workflows/security.yml/badge.svg)](https://github.com/dsedgmen/devenv-ai-assistant/actions/workflows/security.yml)
+[![Release](https://github.com/dsedgmen/devenv-ai-assistant/actions/workflows/release.yml/badge.svg)](https://github.com/dsedgmen/devenv-ai-assistant/actions/workflows/release.yml)
+[![COPR](https://copr.fedorainfracloud.org/coprs/dsedgmen/devenv/package/devenv-ai-assistant/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/dsedgmen/devenv/package/devenv-ai-assistant/)
+[![GitHub release](https://img.shields.io/github/v/release/dsedgmen/devenv-ai-assistant?include_prereleases)](https://github.com/dsedgmen/devenv-ai-assistant/releases)
 
-Vim/Neovim editor configs for AI-assisted coding (complete, explain, review,
-refactor, generate, chat). Calls the external
+Vim/Neovim editor configs for AI-assisted coding (complete, explain, review,refactor, generate, chat). Calls the external
 [devenv-ai-helper](https://github.com/dsedgmen/devenv-ai-helper) CLI.
 
 LSP, Tree-sitter, and productivity plugins live in

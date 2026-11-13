@@ -1,0 +1,35 @@
+name: Security
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - run: find . -name '*.sh' -print0 | xargs -0 -r shellcheck
+
+  syntax:
+    name: Script and editor config syntax
+    runs-on: ubuntu-24.04
+    container: fedora:latest
+    steps:
+      - name: Install tools
+        run: dnf install -y git neovim vim-enhanced
+      - uses: actions/checkout@v5
+      - name: bash -n + nvim/vim load
+        run: |
+          set -euo pipefail
+          find . -name '*.sh' -print0 | xargs -0 -r bash -n
+          nvim --headless -u nvim-init.lua -i NONE -c quit
+          vim -Nu vimrc -e -s -c quit

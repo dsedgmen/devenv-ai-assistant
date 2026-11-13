@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+      - "v*.*.*-rc.*"
+      - "[0-9]*.[0-9]*.[0-9]*"
+      - "[0-9]*.[0-9]*.[0-9]*-rc.*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build RPMs but skip creating GitHub release"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build release RPMs
+    runs-on: ubuntu-24.04
+    container: fedora:latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      release: ${{ steps.meta.outputs.release }}
+      channel: ${{ steps.meta.outputs.channel }}
+    steps:
+      - name: Install tools
+        run: dnf install -y git rpm-build rpmdevtools
+
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Resolve, build, stage
+        id: meta
+        env:
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          chmod +x ./scripts/rpm-version.sh
+          eval "$(./scripts/rpm-version.sh --shell)"
+          case "$CHANNEL" in stable|rc) ;; *)
+            echo "Tag/ref must resolve to stable or rc (got $CHANNEL)" >&2
+            exit 1
+          ;; esac
+          {
+            echo "version=$VERSION"
+            echo "release=$RELEASE"
+            echo "channel=$CHANNEL"
+          } >> "$GITHUB_OUTPUT"
+
+          mkdir -p ~/rpmbuild/SOURCES ~/rpmbuild/SPECS dist
+          mkdir -p "/tmp/pack/devenv-ai-assistant-${VERSION}"
+          cp -a nvim-init.lua vimrc QUICKREF.txt README.md LICENSE rpm \
+            "/tmp/pack/devenv-ai-assistant-${VERSION}/"
+          tar -C /tmp/pack -czf ~/rpmbuild/SOURCES/devenv-ai-assistant-${VERSION}.tar.gz \
+            "devenv-ai-assistant-${VERSION}"
+
+          qmark='?'
+          dist_suffix="%{${qmark}dist}"
+          sed \
+            -e "s/^Version:.*/Version:        ${VERSION}/" \
+            -e "s/^Release:.*/Release:        ${RELEASE}${dist_suffix}/" \
+            devenv-ai-assistant.spec > ~/rpmbuild/SPECS/devenv-ai-assistant.spec
+
+          rpmbuild -ba ~/rpmbuild/SPECS/devenv-ai-assistant.spec
+          cp -a ~/rpmbuild/RPMS/*/*.rpm ~/rpmbuild/SRPMS/*.rpm dist/
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v5
+        with:
+          name: release-rpms
+          path: dist/*
+
+  github-release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-24.04
+    if: ${{ !inputs.dry_run && startsWith(github.ref, 'refs/tags/') }}
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: release-rpms
+          path: dist
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: devenv-ai-assistant ${{ needs.build.outputs.version }}
+          prerelease: ${{ needs.build.outputs.channel != 'stable' }}
+          body: |
+            Channel: **${{ needs.build.outputs.channel }}**
+
+            RPMs: `devenv-ai-assistant`, `devenv-ai-assistant-neovim`, `devenv-ai-assistant-vim`
+            EVR: `${{ needs.build.outputs.version }}-${{ needs.build.outputs.release }}`
+
+            See [RELEASE.md](./RELEASE.md).
+          files: dist/*
